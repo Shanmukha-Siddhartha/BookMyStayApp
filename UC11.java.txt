@@ -1,0 +1,145 @@
+import java.util.*;
+
+/*
+ * Reservation class
+ */
+class Reservation {
+
+    private String guestName;
+    private String roomType;
+
+    public Reservation(String guestName, String roomType) {
+        this.guestName = guestName;
+        this.roomType = roomType;
+    }
+
+    public String getGuestName() {
+        return guestName;
+    }
+
+    public String getRoomType() {
+        return roomType;
+    }
+}
+
+
+/*
+ * RoomInventory shared resource
+ */
+class RoomInventory {
+
+    private Map<String, Integer> inventory;
+
+    public RoomInventory() {
+        inventory = new HashMap<>();
+
+        inventory.put("Single Room", 2);
+        inventory.put("Double Room", 2);
+        inventory.put("Suite Room", 1);
+    }
+
+    /*
+     * Critical section (thread-safe)
+     */
+    public synchronized boolean allocateRoom(String roomType, String guestName) {
+
+        int available = inventory.getOrDefault(roomType, 0);
+
+        if (available > 0) {
+
+            inventory.put(roomType, available - 1);
+
+            System.out.println("Booking Confirmed for " + guestName +
+                    " | Room Type: " + roomType +
+                    " | Remaining: " + (available - 1));
+
+            return true;
+        }
+
+        System.out.println("Booking Failed for " + guestName +
+                " | Room Type: " + roomType +
+                " | No rooms available");
+
+        return false;
+    }
+
+    public void displayInventory() {
+
+        System.out.println("\nFinal Inventory State");
+        System.out.println("----------------------");
+
+        for (String type : inventory.keySet()) {
+            System.out.println(type + " : " + inventory.get(type));
+        }
+    }
+}
+
+
+/*
+ * BookingProcessor thread
+ */
+class BookingProcessor extends Thread {
+
+    private Reservation reservation;
+    private RoomInventory inventory;
+
+    public BookingProcessor(Reservation reservation, RoomInventory inventory) {
+        this.reservation = reservation;
+        this.inventory = inventory;
+    }
+
+    public void run() {
+        inventory.allocateRoom(
+                reservation.getRoomType(),
+                reservation.getGuestName()
+        );
+    }
+}
+
+
+/*
+ * Main class
+ */
+public class UseCase11ConcurrentBookingSimulation {
+
+    public static void main(String[] args) {
+
+        System.out.println("=================================");
+        System.out.println("       BOOK MY STAY APP");
+        System.out.println("   Hotel Booking System v11.1");
+        System.out.println("=================================");
+
+        RoomInventory inventory = new RoomInventory();
+
+        List<Reservation> reservations = new ArrayList<>();
+
+        reservations.add(new Reservation("Mukesh", "Single Room"));
+        reservations.add(new Reservation("Rahul", "Single Room"));
+        reservations.add(new Reservation("Ananya", "Single Room"));
+        reservations.add(new Reservation("David", "Double Room"));
+        reservations.add(new Reservation("Riya", "Suite Room"));
+        reservations.add(new Reservation("Aman", "Suite Room"));
+
+        List<Thread> threads = new ArrayList<>();
+
+        // Simulate concurrent booking requests
+        for (Reservation r : reservations) {
+
+            Thread t = new BookingProcessor(r, inventory);
+            threads.add(t);
+            t.start();
+        }
+
+        // Wait for all threads to complete
+        for (Thread t : threads) {
+
+            try {
+                t.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        inventory.displayInventory();
+    }
+}
