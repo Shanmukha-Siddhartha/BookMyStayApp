@@ -1,0 +1,149 @@
+import java.io.*;
+import java.util.*;
+
+/*
+ * Reservation class (Serializable)
+ */
+class Reservation implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    private String reservationId;
+    private String guestName;
+    private String roomType;
+
+    public Reservation(String reservationId, String guestName, String roomType) {
+        this.reservationId = reservationId;
+        this.guestName = guestName;
+        this.roomType = roomType;
+    }
+
+    public String getReservationId() {
+        return reservationId;
+    }
+
+    public void display() {
+        System.out.println(reservationId + " | " + guestName + " | " + roomType);
+    }
+}
+
+
+/*
+ * SystemState holds inventory and booking history
+ */
+class SystemState implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    Map<String, Integer> inventory;
+    List<Reservation> reservations;
+
+    public SystemState() {
+
+        inventory = new HashMap<>();
+        reservations = new ArrayList<>();
+
+        inventory.put("Single Room", 2);
+        inventory.put("Double Room", 2);
+        inventory.put("Suite Room", 1);
+    }
+
+    public void displayState() {
+
+        System.out.println("\nCurrent Inventory");
+        System.out.println("--------------------");
+
+        for (String type : inventory.keySet()) {
+            System.out.println(type + " : " + inventory.get(type));
+        }
+
+        System.out.println("\nBooking History");
+        System.out.println("--------------------");
+
+        for (Reservation r : reservations) {
+            r.display();
+        }
+    }
+}
+
+
+/*
+ * Persistence Service
+ */
+class PersistenceService {
+
+    private static final String FILE_NAME = "hotel_state.ser";
+
+    // Save state to file
+    public static void saveState(SystemState state) {
+
+        try (ObjectOutputStream out =
+                     new ObjectOutputStream(new FileOutputStream(FILE_NAME))) {
+
+            out.writeObject(state);
+
+            System.out.println("\nSystem state saved successfully.");
+
+        } catch (IOException e) {
+            System.out.println("Error saving state: " + e.getMessage());
+        }
+    }
+
+    // Load state from file
+    public static SystemState loadState() {
+
+        try (ObjectInputStream in =
+                     new ObjectInputStream(new FileInputStream(FILE_NAME))) {
+
+            SystemState state = (SystemState) in.readObject();
+
+            System.out.println("System state restored from file.");
+
+            return state;
+
+        } catch (Exception e) {
+
+            System.out.println("No saved state found. Starting fresh system.");
+
+            return new SystemState();
+        }
+    }
+}
+
+
+/*
+ * Main class
+ */
+public class UseCase12DataPersistenceRecovery {
+
+    public static void main(String[] args) {
+
+        System.out.println("=================================");
+        System.out.println("       BOOK MY STAY APP");
+        System.out.println("   Hotel Booking System v12.1");
+        System.out.println("=================================");
+
+        // Load persisted system state
+        SystemState state = PersistenceService.loadState();
+
+        // Simulate new bookings
+        state.reservations.add(
+                new Reservation("RES201", "Mukesh", "Single Room"));
+
+        state.reservations.add(
+                new Reservation("RES202", "Rahul", "Double Room"));
+
+        // Update inventory
+        state.inventory.put("Single Room",
+                state.inventory.get("Single Room") - 1);
+
+        state.inventory.put("Double Room",
+                state.inventory.get("Double Room") - 1);
+
+        // Display current system state
+        state.displayState();
+
+        // Save state before shutdown
+        PersistenceService.saveState(state);
+    }
+}
